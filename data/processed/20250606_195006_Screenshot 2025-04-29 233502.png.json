@@ -1,0 +1,42 @@
+{
+  "document_id": 6,
+  "filename": "20250606_195006_Screenshot 2025-04-29 233502.png",
+  "file_type": "png",
+  "created_at": "2025-06-06T14:20:06.851831",
+  "pages": [
+    {
+      "page_number": 1,
+      "content": "ng recat Behe re teen | |\n\nHY yfrrra is COCOMO and what is its primary objective? What are the key inputs required for COCOMO esti-\nmation?\n\nYA Compare the three ditferent versions of COCOMO se\n\n\" I, A software is strongly coupled to complex hardware, and it is meant for real-time systems. It is estimated that\nh the software will have 32, 000 lines of code. Compute the effort and time required to develop the software\n\nusing the basic COCOMO model,\nps6 Write the differences between black bax testing and white bax testing.\n\nPF What is system testing? Explain the three main kinds of system testing approaches,\n\nPP Explain four popular white box testing strategies by considering suitable examples, Write down the difference\n~~ between branch coverage and condition coverage\n\n",
+      "paragraphs": [
+        {
+          "paragraph_number": 1,
+          "content": "ng recat Behe re teen | |"
+        },
+        {
+          "paragraph_number": 2,
+          "content": "HY yfrrra is COCOMO and what is its primary objective? What are the key inputs required for COCOMO esti-\nmation?"
+        },
+        {
+          "paragraph_number": 3,
+          "content": "YA Compare the three ditferent versions of COCOMO se"
+        },
+        {
+          "paragraph_number": 4,
+          "content": "\" I, A software is strongly coupled to complex hardware, and it is meant for real-time systems. It is estimated that\nh the software will have 32, 000 lines of code. Compute the effort and time required to develop the software"
+        },
+        {
+          "paragraph_number": 5,
+          "content": "using the basic COCOMO model,\nps6 Write the differences between black bax testing and white bax testing."
+        },
+        {
+          "paragraph_number": 6,
+          "content": "PF What is system testing? Explain the three main kinds of system testing approaches,"
+        },
+        {
+          "paragraph_number": 7,
+          "content": "PP Explain four popular white box testing strategies by considering suitable examples, Write down the difference\n~~ between branch coverage and condition coverage"
+        }
+      ]
+    }
+  ]
+}
