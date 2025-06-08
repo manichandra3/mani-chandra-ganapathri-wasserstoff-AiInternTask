@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 import json
 
-from .routers import documents, search
+from .routers import documents, search, qa
 from .core.config import settings
 from .db.database import engine, Base
 
@@ -30,6 +30,7 @@ app.add_middleware(
 # Include routers
 app.include_router(documents.router, prefix="/api/v1", tags=["documents"])
 app.include_router(search.router, prefix="/api/v1", tags=["search"])
+app.include_router(qa.router, prefix="/api/v1", tags=["qa"])
 
 @app.get("/")
 async def root():
