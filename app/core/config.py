@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     PROCESSED_DIR: Path = Path("data/processed")
     
     # Database settings
-    DATABASE_URL: str = "sqlite:///./data/documents.db"
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./data/documents.db")
     
     # OCR settings
     TESSERACT_CMD: Optional[str] = None  # Will be set based on OS
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     
     # Gemini API key
-    GEMINI_API_KEY: str = "AIzaSyDe5eyX_259iLUlAzc-VjMOq54_SvopxW0"
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "AIzaSyDk48D8bxceLXT29GPw96yKKSENT_uK8x8")
     
     class Config:
         case_sensitive = True

@@ -4,10 +4,12 @@ from typing import List
 import os
 import aiofiles
 from datetime import datetime
+import shutil
 
 from ..db.database import get_db
 from ..services.document_processor import DocumentProcessor
 from ..core.config import settings
+from ..services.vector_store import collection
 
 router = APIRouter()
 
@@ -102,4 +104,39 @@ async def get_document(document_id: int, db: Session = Depends(get_db)):
             }
             for page in document.pages
         ]
-    } 
+    }
+
+@router.delete("/clear-all")
+async def clear_all_documents(db: Session = Depends(get_db)):
+    """
+    Clear all documents from the database, vector store, and file system.
+    This will delete:
+    - All document records from the database
+    - All vectors from the vector store
+    - All files from the upload and processed directories
+    """
+    try:
+        # Clear vector store
+        collection.delete(
+            where={"$and": [{"doc_id": {"$exists": True}}]}
+        )
+        
+        # Clear database
+        from ..db.models import Document, Page, Paragraph
+        db.query(Paragraph).delete()
+        db.query(Page).delete()
+        db.query(Document).delete()
+        db.commit()
+        
+        # Clear file system
+        if os.path.exists(settings.UPLOAD_DIR):
+            shutil.rmtree(settings.UPLOAD_DIR)
+            os.makedirs(settings.UPLOAD_DIR)
+            
+        if os.path.exists(settings.PROCESSED_DIR):
+            shutil.rmtree(settings.PROCESSED_DIR)
+            os.makedirs(settings.PROCESSED_DIR)
+        
+        return {"message": "All documents cleared successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) 
