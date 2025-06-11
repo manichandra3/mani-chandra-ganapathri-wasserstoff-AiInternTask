@@ -4,6 +4,7 @@ from ..core.config import settings
 from .vector_store import search_similar_chunks
 from ..db.database import SessionLocal
 from ..db.models import Document, Page, Paragraph
+from .theme_synthesizer import synthesize_themes
 
 # Initialize Gemini
 genai.configure(api_key=settings.GEMINI_API_KEY)
@@ -65,19 +66,14 @@ def format_context(chunks: List[Dict[str, Any]], all_content: List[Dict[str, Any
 
 def generate_qa_prompt(question: str, context: str) -> str:
     """Generate a prompt for the LLM to answer the question with citations."""
-    return f"""You are a helpful AI assistant. Answer the following question based on the provided context.
-Include specific citations from the context in your answer.
+    return f"""Based on the following context, answer the question. Make sure to cite your sources using the format [Doc ID: X, Page: Y, Paragraph: Z] for each piece of information you use.
+
+Question: {question}
 
 Context:
 {context}
 
-Question: {question}
-
-Please format your answer as follows:
-1. First, provide a direct answer to the question
-2. Then, list the citations you used in the format: [Doc ID: X, Page: Y, Paragraph: Z]
-
-If the context doesn't contain enough information to answer the question, please say so.
+Please provide your answer followed by a "Citations:" section listing all the sources you used in the format [Doc ID: X, Page: Y, Paragraph: Z].
 
 Answer:"""
 
@@ -114,7 +110,8 @@ def format_answer_for_table(answer: str, chunks: List[Dict[str, Any]], all_conte
         # Then add any additional cited content from the full documents
         for doc in all_content:
             for para in doc["paragraphs"]:
-                if f"[Doc ID: {doc['doc_id']}, Page: {doc['page']}, Paragraph: {para['paragraph_number']}]" in citations:
+                citation_pattern = f"[Doc ID: {doc['doc_id']}, Page: {doc['page']}, Paragraph: {para['paragraph_number']}]"
+                if citation_pattern in citations:
                     table_rows.append({
                         "doc_id": doc["doc_id"],
                         "content": para["content"],
@@ -133,7 +130,7 @@ async def answer_question(question: str, k: int = 5) -> List[Dict[str, str]]:
         k: Number of chunks to retrieve (default: 5)
     
     Returns:
-        List of dictionaries containing the answer and citations in table format
+        List of dictionaries containing the answer, citations, and themes in table format
     """
     # Get all document content
     all_content = get_all_document_content()
@@ -160,4 +157,10 @@ async def answer_question(question: str, k: int = 5) -> List[Dict[str, str]]:
     answer = response.text
     
     # Format answer into table structure
-    return format_answer_for_table(answer, chunks, all_content) 
+    answer_rows = format_answer_for_table(answer, chunks, all_content)
+    
+    # Synthesize themes from the answers
+    theme_rows = await synthesize_themes(answer_rows)
+    
+    # Combine answer and theme rows
+    return answer_rows + theme_rows 

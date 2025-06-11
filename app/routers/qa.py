@@ -7,14 +7,14 @@ router = APIRouter()
 @router.get("/ask", response_model=List[Dict[str, str]])
 async def ask_question(question: str, k: int = 5):
     """
-    Ask a question about the documents and get an answer with citations.
+    Ask a question about the documents and get an answer with citations and theme analysis.
     
     Args:
         question: The question to ask
         k: Number of chunks to retrieve (default: 5)
     
     Returns:
-        List of dictionaries containing the answer and citations in table format:
+        List of dictionaries containing the answer, citations, and themes in table format:
         [
             {
                 "doc_id": "Answer",
@@ -27,6 +27,18 @@ async def ask_question(question: str, k: int = 5):
                 "content": "Cited text",
                 "page": "1",
                 "paragraph": "1"
+            },
+            {
+                "doc_id": "Theme 1",
+                "content": "Theme summary",
+                "page": "",
+                "paragraph": ""
+            },
+            {
+                "doc_id": "1",
+                "content": "Supporting evidence",
+                "page": "2",
+                "paragraph": "3"
             },
             ...
         ]
