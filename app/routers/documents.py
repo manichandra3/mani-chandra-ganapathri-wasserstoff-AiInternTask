@@ -139,4 +139,43 @@ async def clear_all_documents(db: Session = Depends(get_db)):
         
         return {"message": "All documents cleared successfully"}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/documents/{document_id}")
+async def delete_document(document_id: int, db: Session = Depends(get_db)):
+    """
+    Delete a specific document from the database, vector store, and file system.
+    """
+    from ..db.models import Document, Page, Paragraph
+    
+    # Get document
+    document = db.query(Document).filter(Document.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    try:
+        # Delete from vector store
+        collection.delete(
+            where={"doc_id": str(document_id)}
+        )
+        
+        # Delete from database
+        db.query(Paragraph).filter(Paragraph.page_id.in_(
+            db.query(Page.id).filter(Page.document_id == document_id)
+        )).delete(synchronize_session=False)
+        db.query(Page).filter(Page.document_id == document_id).delete()
+        db.query(Document).filter(Document.id == document_id).delete()
+        db.commit()
+        
+        # Delete files
+        file_path = settings.UPLOAD_DIR / document.filename
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
+        processed_dir = settings.PROCESSED_DIR / str(document_id)
+        if os.path.exists(processed_dir):
+            shutil.rmtree(processed_dir)
+        
+        return {"message": f"Document {document_id} deleted successfully"}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
