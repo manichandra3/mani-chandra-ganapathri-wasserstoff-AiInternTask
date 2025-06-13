@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { HomeIcon, DocumentIcon, MagnifyingGlassIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
-import { uploadDocument, searchDocuments, askQuestion, deleteDocument } from './services/api';
+import { uploadDocument, searchDocuments, askQuestion, deleteDocument, getDocumentDetails } from './services/api';
 import api from './services/api';
 
 function App() {
@@ -70,10 +70,243 @@ function App() {
 }
 
 function Home() {
+  const [recentDocuments, setRecentDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    fetchRecentDocuments();
+  }, []);
+
+  const fetchRecentDocuments = async () => {
+    try {
+      const response = await api.get('/documents');
+      // Sort by created_at and take the 5 most recent
+      const sorted = response.data.sort((a, b) => 
+        new Date(b.created_at) - new Date(a.created_at)
+      );
+      setRecentDocuments(sorted.slice(0, 5));
+    } catch (err) {
+      setError('Failed to fetch recent documents');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setSearching(true);
+    try {
+      const results = await searchDocuments(searchQuery);
+      setSearchResults(results);
+    } catch (err) {
+      setError('Search failed');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleQuickUpload = async () => {
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      await uploadDocument(file);
+      setFile(null);
+      fetchRecentDocuments(); // Refresh the recent documents list
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
-    <div className="text-center">
+    <div className="max-w-7xl mx-auto">
+      {/* Hero Section */}
+      <div className="text-center mb-12">
       <h2 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Document Processing</h2>
-      <p className="text-lg text-gray-600">Upload, search, and analyze your documents with ease.</p>
+        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          Upload, search, and analyze your documents with ease. Get started by uploading a document or searching through your existing ones.
+        </p>
+      </div>
+
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+        {/* Quick Upload */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Upload</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+              <div className="space-y-1 text-center">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  stroke="currentColor"
+                  fill="none"
+                  viewBox="0 0 48 48"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <div className="flex text-sm text-gray-600">
+                  <label
+                    htmlFor="quick-upload"
+                    className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
+                  >
+                    <span>Upload a file</span>
+                    <input
+                      id="quick-upload"
+                      name="quick-upload"
+                      type="file"
+                      className="sr-only"
+                      onChange={(e) => setFile(e.target.files[0])}
+                      accept=".pdf,.jpg,.jpeg,.png,.txt"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+            {file && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">{file.name}</p>
+                <button
+                  onClick={handleQuickUpload}
+                  disabled={uploading}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                >
+                  {uploading ? 'Uploading...' : 'Upload'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Search */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Search</h3>
+          <div className="space-y-4">
+            <div className="flex rounded-md shadow-sm">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleQuickSearch()}
+                className="focus:ring-primary-500 focus:border-primary-500 flex-1 block w-full rounded-md sm:text-sm border-gray-300"
+                placeholder="Search your documents..."
+              />
+              <button
+                onClick={handleQuickSearch}
+                disabled={searching}
+                className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              >
+                {searching ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+            {searchResults.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {searchResults.slice(0, 3).map((result, index) => (
+                  <div key={index} className="text-sm text-gray-600 p-2 bg-gray-50 rounded">
+                    {result.text}
+                  </div>
+                ))}
+                {searchResults.length > 3 && (
+                  <Link
+                    to="/search"
+                    className="text-sm text-primary-600 hover:text-primary-500"
+                  >
+                    View all results →
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Documents */}
+      <div className="bg-white rounded-lg shadow p-6 mb-12">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Recent Documents</h3>
+          <Link
+            to="/documents"
+            className="text-sm text-primary-600 hover:text-primary-500"
+          >
+            View all →
+          </Link>
+        </div>
+        {loading ? (
+          <p className="text-sm text-gray-600">Loading recent documents...</p>
+        ) : error ? (
+          <p className="text-sm text-red-600">{error}</p>
+        ) : recentDocuments.length === 0 ? (
+          <p className="text-sm text-gray-600">No documents uploaded yet</p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {recentDocuments.map((doc) => (
+              <div key={doc.id} className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate" title={doc.filename}>
+                      {doc.filename}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Uploaded: {new Date(doc.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Link
+                    to={`/documents`}
+                    className="ml-4 text-primary-600 hover:text-primary-700"
+                  >
+                    View
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Feature Highlights */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-center h-12 w-12 rounded-md bg-primary-500 text-white mb-4">
+            <DocumentIcon className="h-6 w-6" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Document Management</h3>
+          <p className="text-sm text-gray-600">
+            Upload and organize your documents with ease. Support for PDF, images, and text files.
+          </p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-center h-12 w-12 rounded-md bg-primary-500 text-white mb-4">
+            <MagnifyingGlassIcon className="h-6 w-6" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Smart Search</h3>
+          <p className="text-sm text-gray-600">
+            Search through your documents using natural language queries and find exactly what you need.
+          </p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-center h-12 w-12 rounded-md bg-primary-500 text-white mb-4">
+            <QuestionMarkCircleIcon className="h-6 w-6" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Q&A System</h3>
+          <p className="text-sm text-gray-600">
+            Ask questions about your documents and get instant answers powered by AI.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -86,6 +319,7 @@ function Documents() {
   const [loading, setLoading] = useState(true);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [loadingContent, setLoadingContent] = useState(false);
 
   const fetchDocuments = async () => {
     try {
@@ -135,6 +369,19 @@ function Documents() {
       setError(err.message);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleViewDocument = async (doc) => {
+    setSelectedDocument(doc);
+    setLoadingContent(true);
+    try {
+      const documentDetails = await getDocumentDetails(doc.id);
+      setSelectedDocument(documentDetails);
+    } catch (err) {
+      setError('Failed to load document content');
+    } finally {
+      setLoadingContent(false);
     }
   };
 
@@ -212,27 +459,31 @@ function Documents() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {documents.map((doc) => (
               <div key={doc.id} className="bg-white shadow rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{doc.filename}</p>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0 pr-4">
+                      <p className="text-sm font-medium text-gray-900 truncate" title={doc.filename}>
+                        {doc.filename}
+                      </p>
                     <p className="text-xs text-gray-500">
                       Type: {doc.file_type} • Uploaded: {new Date(doc.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="flex space-x-2">
+                    <div className="flex-shrink-0 flex space-x-2">
                     <button
-                      onClick={() => setSelectedDocument(doc)}
-                      className="text-primary-600 hover:text-primary-700"
+                        onClick={() => handleViewDocument(doc)}
+                        className="text-primary-600 hover:text-primary-700 px-2 py-1 rounded hover:bg-gray-50"
                     >
                       View
                     </button>
                     <button
                       onClick={() => handleDelete(doc.id)}
                       disabled={deleting}
-                      className="text-red-600 hover:text-red-700"
+                        className="text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-gray-50"
                     >
                       {deleting ? 'Deleting...' : 'Delete'}
                     </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -247,7 +498,7 @@ function Documents() {
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
+                <h3 className="text-lg font-medium text-gray-900 truncate max-w-2xl" title={selectedDocument.filename}>
                   {selectedDocument.filename}
                 </h3>
                 <button
@@ -261,7 +512,12 @@ function Documents() {
                 </button>
               </div>
               <div className="space-y-4">
-                {selectedDocument.pages?.map((page) => (
+                {loadingContent ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">Loading document content...</p>
+                  </div>
+                ) : selectedDocument.pages ? (
+                  selectedDocument.pages.map((page) => (
                   <div key={page.page_number} className="border-t pt-4">
                     <h4 className="text-sm font-medium text-gray-900 mb-2">
                       Page {page.page_number}
@@ -274,7 +530,12 @@ function Documents() {
                       ))}
                     </div>
                   </div>
-                ))}
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No content available</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -289,6 +550,8 @@ function Search() {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [loadingContent, setLoadingContent] = useState(false);
 
   const handleSearch = async () => {
     if (!query.trim()) {
@@ -306,6 +569,22 @@ function Search() {
       setError(err.message);
     } finally {
       setSearching(false);
+    }
+  };
+
+  const handleViewDocument = async (docId, pageNumber, paragraphNumber) => {
+    setLoadingContent(true);
+    try {
+      const documentDetails = await getDocumentDetails(docId);
+      setSelectedDocument({
+        ...documentDetails,
+        highlightPage: pageNumber,
+        highlightParagraph: paragraphNumber
+      });
+    } catch (err) {
+      setError('Failed to load document content');
+    } finally {
+      setLoadingContent(false);
     }
   };
 
@@ -352,11 +631,18 @@ function Search() {
                 <p className="text-sm text-gray-900">{result.text}</p>
                 <div className="mt-2 flex items-center justify-between">
                   <p className="text-xs text-gray-500">
-                    Document ID: {result.metadata.doc_id} • Page: {result.metadata.page}
+                    Document ID: {result.metadata.doc_id}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    Similarity: {((1 - result.distance) * 100).toFixed(1)}%
-                  </p>
+                  <button
+                    onClick={() => handleViewDocument(
+                      result.metadata.doc_id,
+                      result.metadata.page,
+                      result.metadata.paragraph
+                    )}
+                    className="text-primary-600 hover:text-primary-700 text-sm"
+                  >
+                    View in Document →
+                  </button>
                 </div>
               </div>
             ))}
@@ -369,6 +655,67 @@ function Search() {
           </div>
         )}
       </div>
+
+      {/* Document View Modal */}
+      {selectedDocument && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-medium text-gray-900 truncate max-w-2xl" title={selectedDocument.filename}>
+                  {selectedDocument.filename}
+                </h3>
+                <button
+                  onClick={() => setSelectedDocument(null)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <span className="sr-only">Close</span>
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="space-y-4">
+                {loadingContent ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">Loading document content...</p>
+                  </div>
+                ) : selectedDocument.pages ? (
+                  selectedDocument.pages.map((page) => (
+                    <div 
+                      key={page.page_number} 
+                      className={`border-t pt-4 ${page.page_number === selectedDocument.highlightPage ? 'bg-yellow-50' : ''}`}
+                    >
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">
+                        Page {page.page_number}
+                      </h4>
+                      <div className="space-y-2">
+                        {page.paragraphs.map((paragraph) => (
+                          <p 
+                            key={paragraph.paragraph_number} 
+                            className={`text-sm text-gray-600 ${
+                              page.page_number === selectedDocument.highlightPage && 
+                              paragraph.paragraph_number === selectedDocument.highlightParagraph 
+                                ? 'bg-yellow-100 p-2 rounded' 
+                                : ''
+                            }`}
+                          >
+                            {paragraph.content}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No content available</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -378,6 +725,8 @@ function QA() {
   const [answer, setAnswer] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [loadingContent, setLoadingContent] = useState(false);
 
   const handleSubmit = async () => {
     if (!question.trim()) {
@@ -395,6 +744,22 @@ function QA() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewDocument = async (docId, pageNumber, paragraphNumber) => {
+    setLoadingContent(true);
+    try {
+      const documentDetails = await getDocumentDetails(docId);
+      setSelectedDocument({
+        ...documentDetails,
+        highlightPage: pageNumber,
+        highlightParagraph: paragraphNumber
+      });
+    } catch (err) {
+      setError('Failed to load document content');
+    } finally {
+      setLoadingContent(false);
     }
   };
 
@@ -434,15 +799,84 @@ function QA() {
                 <p className="text-sm font-medium text-gray-900">{item.doc_id}</p>
                 <p className="mt-2 text-sm text-gray-600">{item.content}</p>
                 {item.page && item.paragraph && (
-                  <p className="mt-2 text-xs text-gray-500">
-                    Page {item.page} • Paragraph {item.paragraph}
-                  </p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-gray-500">
+                      Page {item.page} • Paragraph {item.paragraph}
+                    </p>
+                    <button
+                      onClick={() => handleViewDocument(item.doc_id, item.page, item.paragraph)}
+                      className="text-primary-600 hover:text-primary-700 text-sm"
+                    >
+                      View in Document →
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Document View Modal */}
+      {selectedDocument && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-medium text-gray-900 truncate max-w-2xl" title={selectedDocument.filename}>
+                  {selectedDocument.filename}
+                </h3>
+                <button
+                  onClick={() => setSelectedDocument(null)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <span className="sr-only">Close</span>
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="space-y-4">
+                {loadingContent ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">Loading document content...</p>
+                  </div>
+                ) : selectedDocument.pages ? (
+                  selectedDocument.pages.map((page) => (
+                    <div 
+                      key={page.page_number} 
+                      className={`border-t pt-4 ${page.page_number === selectedDocument.highlightPage ? 'bg-yellow-50' : ''}`}
+                    >
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">
+                        Page {page.page_number}
+                      </h4>
+                      <div className="space-y-2">
+                        {page.paragraphs.map((paragraph) => (
+                          <p 
+                            key={paragraph.paragraph_number} 
+                            className={`text-sm text-gray-600 ${
+                              page.page_number === selectedDocument.highlightPage && 
+                              paragraph.paragraph_number === selectedDocument.highlightParagraph 
+                                ? 'bg-yellow-100 p-2 rounded' 
+                                : ''
+                            }`}
+                          >
+                            {paragraph.content}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No content available</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

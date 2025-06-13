@@ -56,4 +56,13 @@ export const deleteDocument = async (documentId) => {
   }
 };
 
+export const getDocumentDetails = async (documentId) => {
+  try {
+    const response = await api.get(`/documents/${documentId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.detail || 'Error fetching document details');
+  }
+};
+
 export default api; 

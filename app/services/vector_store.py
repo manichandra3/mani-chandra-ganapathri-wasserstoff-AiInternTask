@@ -21,7 +21,7 @@ collection = chroma_client.get_or_create_collection(
 def get_embedding(text: str) -> List[float]:
     """Get embedding for text using Gemini."""
     result = genai.embed_content(
-        model="models/embedding-001",
+        model="embedding-001",
         content=text,
         task_type="retrieval_document"
     )
